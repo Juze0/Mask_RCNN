@@ -19,11 +19,11 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.compat.v1 as tfc
 tfc.disable_v2_behavior()
-import tf.keras
-import tf.keras.backend as K
-import tf.keras.layers as KL
-import tf.keras.layers as KE
-import tf.keras.models as KM
+import keras
+import keras.backend as K
+import keras.layers as KL
+import keras.engine as KE
+import keras.models as KM
 
 from mrcnn import utils
 
@@ -2212,7 +2212,7 @@ class MaskRCNN():
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
             self.tf.keras_model.metrics_tensors.append(loss)
 
-    def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
+   def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
         """Sets model layers as trainable if their names match
         the given regular expression.
         """
