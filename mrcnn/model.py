@@ -2212,27 +2212,27 @@ class MaskRCNN():
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
             self.tf.keras_model.metrics_tensors.append(loss)
 
-    def set_trainable(self, layer_regex, tf.keras_model=None, indent=0, verbose=1):
+    def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
         """Sets model layers as trainable if their names match
         the given regular expression.
         """
         # Print message on the first call (but not on recursive calls)
-        if verbose > 0 and tf.keras_model is None:
+        if verbose > 0 and keras_model is None:
             log("Selecting layers to train")
 
-        tf.keras_model = tf.keras_model or self.tf.keras_model
+        keras_model = keras_model or self.keras_model
 
         # In multi-GPU training, we wrap the model. Get layers
         # of the inner model because they have the weights.
-        layers = tf.keras_model.inner_model.layers if hasattr(tf.keras_model, "inner_model")\
-            else tf.keras_model.layers
+        layers = keras_model.inner_model.layers if hasattr(keras_model, "inner_model")\
+            else keras_model.layers
 
         for layer in layers:
             # Is the layer a model?
             if layer.__class__.__name__ == 'Model':
                 print("In model: ", layer.name)
                 self.set_trainable(
-                    layer_regex, tf.keras_model=layer, indent=indent + 4)
+                    layer_regex, keras_model=layer, indent=indent + 4)
                 continue
 
             if not layer.weights:
