@@ -953,15 +953,13 @@ def fpn_classifier_graph(rois, feature_maps, image_meta, pool_size, num_classes,
     print(f"Shape of x before Reshape: {s}")
 
     if s[1] is None:
-        batch_size = tf.shape(x)[0]
-        num_rois = tf.shape(x)[1]
-        print(f"Dynamic shape detected: batch_size={batch_size}, num_rois={num_rois}")
-        mrcnn_bbox = KL.Reshape((num_rois, num_classes, 4), name="mrcnn_bbox")(x)
+        mrcnn_bbox = KL.Lambda(lambda y: tf.reshape(y, (tf.shape(y)[0], tf.shape(y)[1], num_classes, 4)), name="mrcnn_bbox")(x)
     else:
         print(f"Requested reshape to: ({s[1]}, {num_classes}, 4)")
         mrcnn_bbox = KL.Reshape((s[1], num_classes, 4), name="mrcnn_bbox")(x)
 
     return mrcnn_class_logits, mrcnn_probs, mrcnn_bbox
+
 
 
 
