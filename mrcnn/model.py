@@ -1698,7 +1698,7 @@ def data_generator(dataset, config, shuffle=True, augment=False, augmentation=No
                                              backbone_shapes,
                                              config.BACKBONE_STRIDES,
                                              config.RPN_ANCHOR_STRIDE)
-
+    assert anchors.shape is not None, "Anchors shape cannot be None"
     # tf.keras requires a generator to run indefinitely.
     while True:
         try:
@@ -1868,6 +1868,7 @@ class MaskRCNN():
         # Inputs
         input_image = KL.Input(
             shape=[None, None, config.IMAGE_SHAPE[2]], name="input_image")
+	    assert shape is not None, "Shape cannot be None"
         input_image_meta = KL.Input(shape=[config.IMAGE_META_SIZE],
                                     name="input_image_meta")
         if mode == "training":
@@ -2424,6 +2425,7 @@ class MaskRCNN():
         molded_images = np.stack(molded_images)
         image_metas = np.stack(image_metas)
         windows = np.stack(windows)
+	assert molded_images.shape is not None, "Molded images shape cannot be None"
         return molded_images, image_metas, windows
 
     def unmold_detections(self, detections, mrcnn_mask, original_image_shape,
