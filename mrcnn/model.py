@@ -2427,7 +2427,7 @@ class MaskRCNN():
         molded_images = np.stack(molded_images)
         image_metas = np.stack(image_metas)
         windows = np.stack(windows)
-	    assert molded_images.shape is not None, "Molded images shape cannot be None"
+        assert molded_images.shape is not None, "Molded images shape cannot be None"
         return molded_images, image_metas, windows
 
     def unmold_detections(self, detections, mrcnn_mask, original_image_shape,
