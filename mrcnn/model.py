@@ -24,7 +24,7 @@ import tensorflow.keras.backend as K
 import tensorflow.keras.layers as KL
 import tensorflow.keras.layers as KE
 import tensorflow.keras.models as KM
-from tensorflow.keras.saving import hdf5_format
+from tensorflow.python.keras.saving import hdf5_format
 
 
 from mrcnn import utils
