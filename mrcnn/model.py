@@ -2125,7 +2125,7 @@ class MaskRCNN():
 
         # In multi-GPU training, we wrap the model. Get layers
         # of the inner model because they have the weights.
-        tf.keras_model = self.tf.keras_model
+        tf.keras_model = self.keras_model
         layers = tf.keras_model.inner_model.layers if hasattr(tf.keras_model, "inner_model")\
             else tf.keras_model.layers
 
@@ -2167,43 +2167,43 @@ class MaskRCNN():
             clipnorm=self.config.GRADIENT_CLIP_NORM)
         # Add Losses
         # First, clear previously set losses to avoid duplication
-        self.tf.keras_model._losses = []
-        self.tf.keras_model._per_input_losses = {}
+        self.keras_model._losses = []
+        self.keras_model._per_input_losses = {}
         loss_names = [
             "rpn_class_loss",  "rpn_bbox_loss",
             "mrcnn_class_loss", "mrcnn_bbox_loss", "mrcnn_mask_loss"]
         for name in loss_names:
-            layer = self.tf.keras_model.get_layer(name)
-            if layer.output in self.tf.keras_model.losses:
+            layer = self.keras_model.get_layer(name)
+            if layer.output in self.keras_model.losses:
                 continue
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.tf.keras_model.add_loss(loss)
+            self.keras_model.add_loss(loss)
 
         # Add L2 Regularization
         # Skip gamma and beta weights of batch normalization layers.
         reg_losses = [
             tf.keras.regularizers.l2(self.config.WEIGHT_DECAY)(w) / tf.cast(tf.size(w), tf.float32)
-            for w in self.tf.keras_model.trainable_weights
+            for w in self.keras_model.trainable_weights
             if 'gamma' not in w.name and 'beta' not in w.name]
-        self.tf.keras_model.add_loss(tf.add_n(reg_losses))
+        self.keras_model.add_loss(tf.add_n(reg_losses))
 
         # Compile
-        self.tf.keras_model.compile(
+        self.keras_model.compile(
             optimizer=optimizer,
-            loss=[None] * len(self.tf.keras_model.outputs))
+            loss=[None] * len(self.keras_model.outputs))
 
         # Add metrics for losses
         for name in loss_names:
-            if name in self.tf.keras_model.metrics_names:
+            if name in self.keras_model.metrics_names:
                 continue
-            layer = self.tf.keras_model.get_layer(name)
-            self.tf.keras_model.metrics_names.append(name)
+            layer = self.keras_model.get_layer(name)
+            self.keras_model.metrics_names.append(name)
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.tf.keras_model.metrics_tensors.append(loss)
+            self.keras_model.metrics_tensors.append(loss)
 
     def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
         """Sets model layers as trainable if their names match
@@ -2366,7 +2366,7 @@ class MaskRCNN():
         else:
             workers = multiprocessing.cpu_count()
 
-        self.tf.keras_model.fit_generator(
+        self.keras_model.fit_generator(
             train_generator,
             initial_epoch=self.epoch,
             epochs=epochs,
@@ -2535,7 +2535,7 @@ class MaskRCNN():
             log("anchors", anchors)
         # Run object detection
         detections, _, _, mrcnn_mask, _, _, _ =\
-            self.tf.keras_model.predict([molded_images, image_metas, anchors], verbose=0)
+            self.keras_model.predict([molded_images, image_metas, anchors], verbose=0)
         # Process detections
         results = []
         for i, image in enumerate(images):
@@ -2592,7 +2592,7 @@ class MaskRCNN():
             log("anchors", anchors)
         # Run object detection
         detections, _, _, mrcnn_mask, _, _, _ =\
-            self.tf.keras_model.predict([molded_images, image_metas, anchors], verbose=0)
+            self.keras_model.predict([molded_images, image_metas, anchors], verbose=0)
         # Process detections
         results = []
         for i, image in enumerate(molded_images):
@@ -2672,7 +2672,7 @@ class MaskRCNN():
         """Returns a list of layers that have weights."""
         layers = []
         # Loop through all layers
-        for l in self.tf.keras_model.layers:
+        for l in self.keras_model.layers:
             # If layer is a wrapper, find inner trainable layer
             l = self.find_trainable_layer(l)
             # Include layer if it has weights
@@ -2693,7 +2693,7 @@ class MaskRCNN():
         Returns an ordered dict of results. Keys are the names received in the
         input and values are Numpy arrays.
         """
-        model = self.tf.keras_model
+        model = self.keras_model
 
         # Organize desired outputs into an ordered dict
         outputs = OrderedDict(outputs)
