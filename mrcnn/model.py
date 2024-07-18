@@ -1868,7 +1868,7 @@ class MaskRCNN():
         # Inputs
         input_image = KL.Input(
             shape=[None, None, config.IMAGE_SHAPE[2]], name="input_image")
-	    assert shape is not None, "Shape cannot be None"
+	assert shape is not None, "Shape cannot be None"
         input_image_meta = KL.Input(shape=[config.IMAGE_META_SIZE],
                                     name="input_image_meta")
         if mode == "training":
