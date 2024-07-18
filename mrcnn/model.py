@@ -2393,7 +2393,7 @@ class MaskRCNN():
     def mold_inputs(self, images):
         """Takes a list of images and modifies them to the format expected
         as an input to the neural network.
-        images: List of image matrices [height,width,depth]. Images can have
+        images: List of image matrices [height, width, depth]. Images can have
             different sizes.
 
         Returns 3 Numpy matrices:
@@ -2427,7 +2427,15 @@ class MaskRCNN():
         molded_images = np.stack(molded_images)
         image_metas = np.stack(image_metas)
         windows = np.stack(windows)
+
+        # Add debug prints and assertions
+        print(f"Molded images shape: {molded_images.shape}")
+        print(f"Image metas shape: {image_metas.shape}")
+        print(f"Windows shape: {windows.shape}")
         assert molded_images.shape is not None, "Molded images shape cannot be None"
+        assert image_metas.shape is not None, "Image metas shape cannot be None"
+        assert windows.shape is not None, "Windows shape cannot be None"
+        
         return molded_images, image_metas, windows
 
     def unmold_detections(self, detections, mrcnn_mask, original_image_shape,
