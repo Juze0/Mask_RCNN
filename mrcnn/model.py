@@ -20,10 +20,10 @@ import tensorflow as tf
 import tensorflow.compat.v1 as tfc
 tfc.disable_v2_behavior()
 import keras
-import keras.backend as K
-import keras.layers as KL
-import keras.engine.topology as KE
-import keras.models as KM
+import tensorflow.keras.backend as K
+import tensorflow.keras.layers as KL
+import tensorflow.keras.layers as KE
+import tensorflow.keras.models as KM
 
 from mrcnn import utils
 
