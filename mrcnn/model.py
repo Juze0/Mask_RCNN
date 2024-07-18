@@ -1845,7 +1845,7 @@ class MaskRCNN():
         self.config = config
         self.model_dir = model_dir
         self.set_log_dir()
-        self.tf.keras_model = self.build(mode=mode, config=config)
+        self.keras_model = self.build(mode=mode, config=config)
 
     def build(self, mode, config):
         """Build Mask R-CNN architecture.
