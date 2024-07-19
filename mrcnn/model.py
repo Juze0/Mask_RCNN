@@ -2167,6 +2167,7 @@ class MaskRCNN():
         optimizer = tf.keras.optimizers.SGD(
             lr=learning_rate, momentum=momentum,
             clipnorm=self.config.GRADIENT_CLIP_NORM)
+        
         # Clear previously set losses to avoid duplication
         self.keras_model._reset_compile_cache()
         self.keras_model._is_compiled = False
