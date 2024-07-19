@@ -2383,12 +2383,12 @@ class MaskRCNN():
             workers = multiprocessing.cpu_count()
 
         self.keras_model.fit(
-            train_generator,
+            train_dataset,
             initial_epoch=self.epoch,
             epochs=epochs,
             steps_per_epoch=self.config.STEPS_PER_EPOCH,
             callbacks=callbacks,
-            validation_data=val_generator,
+            validation_data=val_dataset,
             validation_steps=self.config.VALIDATION_STEPS,
             max_queue_size=100,
             workers=workers,
