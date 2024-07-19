@@ -2219,6 +2219,7 @@ class MaskRCNN():
                 continue
             layer = self.keras_model.get_layer(name)
             #self.keras_model.metrics_names.append(name)
+            metric = self.custom_metrics[name]
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
