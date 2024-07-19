@@ -2165,7 +2165,7 @@ class MaskRCNN():
         """
         # Optimizer object
         optimizer = tf.keras.optimizers.SGD(
-            lr=learning_rate, momentum=momentum,
+            learning_rate=learning_rate, momentum=momentum,
             clipnorm=self.config.GRADIENT_CLIP_NORM)
         
         # Clear previously set losses to avoid duplication
@@ -2197,7 +2197,7 @@ class MaskRCNN():
             # Add custom metrics
             metric = tf.keras.metrics.Mean(name=name)
             self.custom_metrics[name] = metric
-            self.keras_model.add_metric(metric.update_state(loss), name=name, aggregation='mean')
+            self.keras_model.add_metric(metric(loss), name=name, aggregation='mean')
 
         # Add L2 Regularization
         # Skip gamma and beta weights of batch normalization layers.
@@ -2223,7 +2223,7 @@ class MaskRCNN():
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.keras_model.add_metric(metric.update_state(loss), name=name, aggregation='mean')
+            self.keras_model.add_metric(metric(loss), name=name, aggregation='mean')
 
     def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
         """Sets model layers as trainable if their names match
