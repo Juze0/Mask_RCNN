@@ -2167,16 +2167,21 @@ class MaskRCNN():
         optimizer = tf.keras.optimizers.SGD(
             lr=learning_rate, momentum=momentum,
             clipnorm=self.config.GRADIENT_CLIP_NORM)
+        # Clear previously set losses to avoid duplication
+        self.keras_model._reset_compile_cache()
+        self.keras_model._is_compiled = False
+        self.keras_model.compiled_loss = None
+        self.keras_model.compiled_metrics = None
         # Add Losses
         # First, clear previously set losses to avoid duplication
-        self.keras_model._losses = None
-        self.keras_model._per_input_losses = None
 
         loss_names = [
             "rpn_class_loss",  "rpn_bbox_loss",
             "mrcnn_class_loss", "mrcnn_bbox_loss", "mrcnn_mask_loss"]
         for name in loss_names:
             layer = self.keras_model.get_layer(name)
+            if not hasattr(layer, '_losses'):
+                layer._losses = []
             if layer.output in self.keras_model.losses:
                 continue
             loss = (
