@@ -2178,6 +2178,10 @@ class MaskRCNN():
         loss_names = [
             "rpn_class_loss",  "rpn_bbox_loss",
             "mrcnn_class_loss", "mrcnn_bbox_loss", "mrcnn_mask_loss"]
+
+        # Dictionary to hold custom metrics
+        self.custom_metrics = {}
+
         for name in loss_names:
             layer = self.keras_model.get_layer(name)
             if not hasattr(layer, '_losses'):
@@ -2189,12 +2193,17 @@ class MaskRCNN():
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
             self.keras_model.add_loss(loss)
 
+            # Add custom metrics
+            self.custom_metrics[name] = tf.keras.metrics.Mean(name=name)
+            self.keras_model.add_metric(self.custom_metrics[name](loss), name=name, aggregation='mean')
+
         # Add L2 Regularization
         # Skip gamma and beta weights of batch normalization layers.
         reg_losses = [
             tf.keras.regularizers.l2(self.config.WEIGHT_DECAY)(w) / tf.cast(tf.size(w), tf.float32)
             for w in self.keras_model.trainable_weights
             if 'gamma' not in w.name and 'beta' not in w.name]
+        
         self.keras_model.add_loss(tf.add_n(reg_losses))
 
         # Compile
