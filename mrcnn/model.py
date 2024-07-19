@@ -2169,8 +2169,8 @@ class MaskRCNN():
             clipnorm=self.config.GRADIENT_CLIP_NORM)
         # Add Losses
         # First, clear previously set losses to avoid duplication
-        self.keras_model._losses.clear()
-        self.keras_model._per_input_losses.clear()
+        self.keras_model._losses = None
+        self.keras_model._per_input_losses = None
 
         loss_names = [
             "rpn_class_loss",  "rpn_bbox_loss",
