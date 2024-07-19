@@ -2181,7 +2181,7 @@ class MaskRCNN():
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.keras_model.add_loss(loss)
+            self.keras_model.add_loss(tf.keras.layers.Lambda(lambda x: loss)(layer.output))
 
         # Add L2 Regularization
         # Skip gamma and beta weights of batch normalization layers.
@@ -2189,7 +2189,7 @@ class MaskRCNN():
             tf.keras.regularizers.l2(self.config.WEIGHT_DECAY)(w) / tf.cast(tf.size(w), tf.float32)
             for w in self.keras_model.trainable_weights
             if 'gamma' not in w.name and 'beta' not in w.name]
-        self.keras_model.add_loss(tf.add_n(reg_losses))
+        self.keras_model.add_loss(tf.keras.layers.Lambda(lambda x: tf.add_n(reg_losses))(tf.constant(0.0)))
 
         # Compile
         self.keras_model.compile(
@@ -2205,7 +2205,7 @@ class MaskRCNN():
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.keras_model.add_metric(loss,name=name)
+            self.keras_model.add_metric(tf.keras.layers.Lambda(lambda x: loss)(layer.output), name=name)
 
     def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
         """Sets model layers as trainable if their names match
@@ -2370,7 +2370,7 @@ class MaskRCNN():
         else:
             workers = multiprocessing.cpu_count()
 
-        self.keras_model.fit_generator(
+        self.keras_model.fit(
             train_generator,
             initial_epoch=self.epoch,
             epochs=epochs,
