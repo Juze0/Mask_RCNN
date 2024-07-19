@@ -523,13 +523,13 @@ def minimize_mask(bbox, mask, mini_shape):
     mini_mask = np.zeros(mini_shape + (mask.shape[-1],), dtype=bool)
     for i in range(mask.shape[-1]):
         # Pick slice and cast to bool in case load_mask() returned wrong dtype
-        m = mask[:, :, i].astype(bool)
-        y1, x1, y2, x2 = bbox[i][:4]
+        m = mask[:, :, i].astype(np.float32)
+        y1, x1, y2, x2 = bbox[i]
         m = m[y1:y2, x1:x2]
         if m.size == 0:
             raise Exception("Invalid bounding box with area of zero")
         # Resize with bilinear interpolation
-        m = resize(m, mini_shape)
+        m = resize(m, mini_shape, order=0)
         mini_mask[:, :, i] = np.around(m).astype(np.bool)
     return mini_mask
 
