@@ -643,6 +643,135 @@ def generate_pyramid_anchors(scales, ratios, feature_shapes, feature_strides,
 #  Miscellaneous
 ############################################################
 
+def compose_image_meta(image_id, original_image_shape, image_shape, window, scale, active_class_ids):
+    meta = np.array(
+        [image_id] +                  # size=1
+        list(original_image_shape) +  # size=3
+        list(image_shape) +           # size=3
+        list(window) +                # size=4 (y1, x1, y2, x2) in image coordinates
+        [scale] +                     # size=1
+        list(active_class_ids)        # size=num_classes
+    )
+    return meta
+
+def build_rpn_targets(image_shape, anchors, gt_class_ids, gt_boxes, config):
+    rpn_match = np.zeros([anchors.shape[0]], dtype=np.int32)
+    rpn_bbox = np.zeros((config.RPN_TRAIN_ANCHORS_PER_IMAGE, 4))
+    crowd_ix = np.where(gt_class_ids < 0)[0]
+    if crowd_ix.shape[0] > 0:
+        non_crowd_ix = np.where(gt_class_ids > 0)[0]
+        crowd_boxes = gt_boxes[crowd_ix]
+        gt_class_ids = gt_class_ids[non_crowd_ix]
+        gt_boxes = gt_boxes[non_crowd_ix]
+        crowd_boxes = utils.convert_boxes(crowd_boxes)
+    else:
+        crowd_boxes = None
+    overlaps = utils.compute_overlaps(anchors, gt_boxes)
+    anchor_iou_argmax = np.argmax(overlaps, axis=1)
+    anchor_iou_max = overlaps[np.arange(overlaps.shape[0]), anchor_iou_argmax]
+    rpn_match[anchor_iou_max < 0.3] = -1
+    rpn_match[anchor_iou_max >= 0.7] = 1
+    if crowd_boxes is not None:
+        crowd_overlaps = utils.compute_overlaps(anchors, crowd_boxes)
+        crowd_iou_max = np.amax(crowd_overlaps, axis=1)
+        rpn_match[crowd_iou_max >= 0.001] = 0
+    ids = np.where(rpn_match == 1)[0]
+    extra = len(ids) - (config.RPN_TRAIN_ANCHORS_PER_IMAGE // 2)
+    if extra > 0:
+        ids = np.random.choice(ids, extra, replace=False)
+        rpn_match[ids] = 0
+    ids = np.where(rpn_match == -1)[0]
+    extra = len(ids) - (config.RPN_TRAIN_ANCHORS_PER_IMAGE - np.sum(rpn_match == 1))
+    if extra > 0:
+        ids = np.random.choice(ids, extra, replace=False)
+        rpn_match[ids] = 0
+    ids = np.where(rpn_match == 1)[0]
+    ix = 0  # index into rpn_bbox
+    for i, a in zip(ids, anchors[ids]):
+        gt = gt_boxes[anchor_iou_argmax[i]]
+        gt_h = gt[2] - gt[0]
+        gt_w = gt[3] - gt[1]
+        gt_center_y = gt[0] + 0.5 * gt_h
+        gt_center_x = gt[1] + 0.5 * gt_w
+        a_h = a[2] - a[0]
+        a_w = a[3] - a[1]
+        a_center_y = a[0] + 0.5 * a_h
+        a_center_x = a[1] + 0.5 * a_w
+        rpn_bbox[ix] = [
+            (gt_center_y - a_center_y) / a_h,
+            (gt_center_x - a_center_x) / a_w,
+            np.log(gt_h / a_h),
+            np.log(gt_w / a_w),
+        ]
+        rpn_bbox[ix] /= config.RPN_BBOX_STD_DEV
+        ix += 1
+    return rpn_match, rpn_bbox
+
+def build_detection_targets(rpn_rois, gt_class_ids, gt_boxes, gt_masks, config):
+    assert rpn_rois.shape[0] > 0
+    assert gt_class_ids.dtype == np.int32, "Expected int32, got {}".format(gt_class_ids.dtype)
+    assert gt_boxes.dtype == np.float32, "Expected float32, got {}".format(gt_boxes.dtype)
+    assert gt_masks.dtype == np.bool, "Expected bool, got {}".format(gt_masks.dtype)
+
+    rpn_rois = rpn_rois.copy()
+    gt_class_ids = gt_class_ids.copy()
+    gt_boxes = gt_boxes.copy()
+    gt_masks = gt_masks.copy()
+
+    rpn_rois_area = (rpn_rois[:, 2] - rpn_rois[:, 0]) * (rpn_rois[:, 3] - rpn_rois[:, 1])
+    gt_boxes_area = (gt_boxes[:, 2] - gt_boxes[:, 0]) * (gt_boxes[:, 3] - gt_boxes[:, 1])
+
+    overlaps = utils.compute_overlaps(rpn_rois, gt_boxes)
+    rpn_roi_iou_argmax = np.argmax(overlaps, axis=1)
+    rpn_roi_iou_max = overlaps[np.arange(overlaps.shape[0]), rpn_roi_iou_argmax]
+    rpn_roi_gt_boxes = gt_boxes[rpn_roi_iou_argmax]
+    rpn_roi_gt_class_ids = gt_class_ids[rpn_roi_iou_argmax]
+    rpn_roi_gt_boxes_area = gt_boxes_area[rpn_roi_iou_argmax]
+    rpn_roi_gt_masks = gt_masks[:, :, rpn_roi_iou_argmax]
+
+    keep = np.where(rpn_roi_gt_class_ids > 0)[0]
+    rpn_rois = rpn_rois[keep]
+    rpn_roi_gt_boxes = rpn_roi_gt_boxes[keep]
+    rpn_roi_gt_class_ids = rpn_roi_gt_class_ids[keep]
+    rpn_roi_gt_boxes_area = rpn_roi_gt_boxes_area[keep]
+    rpn_roi_gt_masks = rpn_roi_gt_masks[:, :, keep]
+
+    positive_roi_ix = np.where(rpn_roi_iou_max >= config.DETECTION_MIN_CONFIDENCE)[0]
+    negative_roi_ix = np.where(rpn_roi_iou_max < config.DETECTION_MIN_CONFIDENCE)[0]
+
+    positive_roi_count = int(config.TRAIN_ROIS_PER_IMAGE * 0.33)
+    positive_indices = np.random.choice(
+        positive_roi_ix, positive_roi_count, replace=False)
+    negative_indices = np.random.choice(
+        negative_roi_ix, config.TRAIN_ROIS_PER_IMAGE - positive_roi_count, replace=False)
+
+    positive_rois = rpn_rois[positive_indices]
+    negative_rois = rpn_rois[negative_indices]
+
+    positive_overlaps = rpn_roi_iou_max[positive_indices]
+    positive_class_ids = rpn_roi_gt_class_ids[positive_indices]
+    positive_boxes = rpn_roi_gt_boxes[positive_indices]
+    positive_masks = rpn_roi_gt_masks[:, :, positive_indices]
+
+    positive_boxes[:, 0] = np.maximum(positive_boxes[:, 0], 0)
+    positive_boxes[:, 1] = np.maximum(positive_boxes[:, 1], 0)
+    positive_boxes[:, 2] = np.minimum(positive_boxes[:, 2], rpn_rois[:, 2])
+    positive_boxes[:, 3] = np.minimum(positive_boxes[:, 3], rpn_rois[:, 3])
+    positive_boxes[:, 0] = np.maximum(positive_boxes[:, 0], 0)
+    positive_boxes[:, 1] = np.maximum(positive_boxes[:, 1], 0)
+    positive_boxes[:, 2] = np.minimum(positive_boxes[:, 2], positive_boxes[:, 2])
+    positive_boxes[:, 3] = np.minimum(positive_boxes[:, 3], positive_boxes[:, 3])
+
+    mini_masks = np.zeros((positive_boxes.shape[0], config.MINI_MASK_SHAPE[0], config.MINI_MASK_SHAPE[1]))
+    for i in range(positive_boxes.shape[0]):
+        mask = positive_masks[:, :, i]
+        y1, x1, y2, x2 = positive_boxes[i]
+        mask = mask[int(y1):int(y2), int(x1):int(x2)]
+        mask = np.array(Image.fromarray(mask).resize(config.MINI_MASK_SHAPE))
+        mini_masks[i, :, :] = mask
+
+    return positive_rois, positive_class_ids, mini_masks
+
 def trim_zeros(x):
     """It's common to have tensors larger than the available data and
     pad with zeros. This function removes rows that are all zeros.
