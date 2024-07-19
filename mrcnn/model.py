@@ -2240,7 +2240,9 @@ class MaskRCNN():
         # Print trainable layer names
         if trainable and verbose > 0:
             log("{}{:20}   ({})".format(" " * indent, layer.name, layer.__class__.__name__))
-
+        
+        if verbose > 0 and keras_model is None:
+            log("Finished selecting layers to train")
 
     def set_log_dir(self, model_path=None):
         """Sets the model log directory and epoch counter.
