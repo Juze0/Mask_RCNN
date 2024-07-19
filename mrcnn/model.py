@@ -2181,7 +2181,7 @@ class MaskRCNN():
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.keras_model.add_loss(tf.keras.layers.Lambda(lambda x: loss)(layer.output))
+            self.keras_model.add_loss(loss)
 
         # Add L2 Regularization
         # Skip gamma and beta weights of batch normalization layers.
@@ -2189,7 +2189,7 @@ class MaskRCNN():
             tf.keras.regularizers.l2(self.config.WEIGHT_DECAY)(w) / tf.cast(tf.size(w), tf.float32)
             for w in self.keras_model.trainable_weights
             if 'gamma' not in w.name and 'beta' not in w.name]
-        self.keras_model.add_loss(tf.keras.layers.Lambda(lambda x: tf.add_n(reg_losses))(tf.constant(0.0)))
+        self.keras_model.add_loss(tf.add_n(reg_losses))
 
         # Compile
         self.keras_model.compile(
@@ -2205,7 +2205,7 @@ class MaskRCNN():
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.keras_model.add_metric(tf.keras.layers.Lambda(lambda x: loss)(layer.output), name=name)
+            self.keras_model.add_metric(loss, name=name)
 
     def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
         """Sets model layers as trainable if their names match
@@ -2339,6 +2339,18 @@ class MaskRCNN():
                                          no_augmentation_sources=no_augmentation_sources)
         val_generator = data_generator(val_dataset, self.config, shuffle=True,
                                        batch_size=self.config.BATCH_SIZE)
+
+            # Convert data generators to tf.data.Dataset
+        train_dataset = tf.data.Dataset.from_generator(lambda: train_generator,
+                                                   output_signature=(
+                                                       tf.TensorSpec(shape=(None, None, None, 3), dtype=tf.float32),
+                                                       tf.TensorSpec(shape=(None,), dtype=tf.float32)
+                                                   ))
+        val_dataset = tf.data.Dataset.from_generator(lambda: val_generator,
+                                                 output_signature=(
+                                                     tf.TensorSpec(shape=(None, None, None, 3), dtype=tf.float32),
+                                                     tf.TensorSpec(shape=(None,), dtype=tf.float32)
+                                                 ))
 
         # Create log_dir if it does not exist
         if not os.path.exists(self.log_dir):
