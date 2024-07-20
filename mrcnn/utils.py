@@ -643,6 +643,35 @@ def generate_pyramid_anchors(scales, ratios, feature_shapes, feature_strides,
 #  Miscellaneous
 ############################################################
 
+def load_image_gt(dataset, config, image_id, augment=False, augmentation=None, use_mini_mask=False):
+    # Load image and mask
+    image = dataset.load_image(image_id)
+    mask, class_ids = dataset.load_mask(image_id)
+    original_shape = image.shape
+
+    # Resize image and mask
+    image, window, scale, padding, crop = utils.resize_image(
+        image,
+        min_dim=config.IMAGE_MIN_DIM,
+        min_scale=config.IMAGE_MIN_SCALE,
+        max_dim=config.IMAGE_MAX_DIM,
+        mode=config.IMAGE_RESIZE_MODE)
+    mask = utils.resize_mask(mask, scale, padding, crop)
+
+    # Active classes
+    active_class_ids = np.zeros([dataset.num_classes], dtype=np.int32)
+    source_class_ids = dataset.source_class_ids[dataset.image_info[image_id]["source"]]
+    active_class_ids[source_class_ids] = 1
+
+    # Image meta data
+    image_meta = utils.compose_image_meta(image_id, original_shape, image.shape, window, scale, active_class_ids)
+
+    # Ensure image_meta has the correct shape
+    assert image_meta.shape[0] == config.IMAGE_META_SIZE, f"image_meta shape {image_meta.shape} does not match expected shape {config.IMAGE_META_SIZE}"
+
+    return image, image_meta, class_ids, bbox, mask
+
+
 def compose_image_meta(image_id, original_image_shape, image_shape, window, scale, active_class_ids):
     meta = np.array(
         [image_id] +                  # size=1
