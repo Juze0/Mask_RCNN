@@ -1721,6 +1721,9 @@ def data_generator(dataset, config, shuffle=True, augment=False, augmentation=No
                                 augmentation=augmentation,
                                 use_mini_mask=config.USE_MINI_MASK)
 
+            # Vérifiez la taille des métadonnées
+            assert image_meta.shape == (config.IMAGE_META_SIZE,), f"Image meta size mismatch: expected {config.IMAGE_META_SIZE}, got {image_meta.shape}"
+
             # Skip images that have no instances. This can happen in cases
             # where we train on a subset of classes and the image doesn't
             # have any of the classes we care about.
@@ -1817,10 +1820,10 @@ def data_generator(dataset, config, shuffle=True, augment=False, augmentation=No
                 b = 0
         except (GeneratorExit, KeyboardInterrupt):
             raise
-        except:
+        except Exception as e:
             # Log it and skip the image
-            logging.exception("Error processing image {}".format(
-                dataset.image_info[image_id]))
+            logging.exception("Error processing image {}: {}".format(
+                dataset.image_info[image_id], e))
             error_count += 1
             if error_count > 5:
                 raise
